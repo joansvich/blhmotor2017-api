@@ -1,17 +1,44 @@
 const express = require('express');
+const path = require('path');
+const logger = require('morgan');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo')(session);
-
 const cors = require('cors');
 require('dotenv').config();
 
-var app = express();
+const cars = require('./routes/cars');
+
+mongoose.connect(process.env.MONGODB_URI, {
+  keepAlive: true,
+  useNewUrlParser: true,
+  reconnectTries: Number.MAX_VALUE
+}).then(() => {
+}).catch(() => {
+});
+
+const app = express();
+
 app.use(cors({
   credentials: true,
-  origin: process.env.PUBLIC_DOMAIN
-
+  origin: [process.env.PUBLIC_DOMAIN]
 }));
+
+app.use(session({
+  store: new MongoStore({
+    mongooseConnection: mongoose.connection,
+    ttl: 24 * 60 * 60 // 1 day
+  }),
+  secret: process.env.SECRET_SESSION,
+  resave: true,
+  saveUninitialized: true,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
+
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.PUBLIC_DOMAIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,OPTIONS,DELETE');
@@ -19,37 +46,14 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', true);
   next();
 });
-// const jobRouter = require('./routes/job');
 
-// mongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-  keepAlive: true,
-  useNewUrlParser: true,
-  reconnectTries: Number.MAX_VALUE
-}).then(() => {
-  console.log(`Connected to database`);
-}).catch((error) => {
-  console.error(error);
-})
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-  .catch((err) => {
-    console.error('Error connecting to mongo', err);
-  });
-
-// app.use('/', jobRouter);
-
-app.use(session({
-  store: new MongoStore({
-    mongooseConnection: mongoose.connection,
-    ttl: 24 * 60 * 60 // 1 day
-  }),
-  secret: process.env.SECRET,
-  resave: true,
-  saveUninitialized: true,
-  cookie: {
-    maxAge: 24 * 60 * 60 * 1000
-  }
-}));
+app.use('/cars', cars);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -62,7 +66,8 @@ app.use((err, req, res, next) => {
 
   // only render if the error ocurred before sending the response
   if (!res.headersSent) {
-    res.status(500).json({ code: 'unexpected' });
+    const statusError = err.status || '500';
+    res.status(statusError).json(err);
   }
 });
 
