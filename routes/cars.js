@@ -10,6 +10,14 @@ router.get('/', (req, res, next) => {
     });
 });
 
+router.get('/:id', (req, res, next) => {
+  const { id } = req.params;
+  Cars.findById(id)
+    .then((cars) => {
+      return res.json(cars);
+    });
+});
+
 router.post('/create', (req, res, next) => {
   const { model, image, price } = req.body;
 
