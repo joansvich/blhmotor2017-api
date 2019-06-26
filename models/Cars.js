@@ -8,12 +8,12 @@ const carsSchema = new Schema({
     type: String,
     required: true
   },
-  image: {
+  folder: {
+    type: String
+  },
+  imageUrl: {
     type: String,
     required: true
-  },
-  images: {
-    type: Array
   },
   price: {
     type: String,

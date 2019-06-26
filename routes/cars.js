@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Cars = require('../models/Cars');
+const parser = require('../config/cloudinary');
 
 router.get('/', (req, res, next) => {
   Cars.find()
@@ -19,7 +20,7 @@ router.get('/:id', (req, res, next) => {
 });
 
 router.post('/create', (req, res, next) => {
-  const { model, image, price } = req.body;
+  const { model, imageUrl, price, folder } = req.body;
 
   Cars.findOne({
     model
@@ -34,8 +35,9 @@ router.post('/create', (req, res, next) => {
 
       const newCar = new Cars({
         model,
-        image,
-        price
+        imageUrl,
+        price,
+        folder
       });
 
       return newCar.save().then(() => {
@@ -43,6 +45,25 @@ router.post('/create', (req, res, next) => {
       });
     })
     .catch(next);
+});
+
+router.post('/image', parser.single('photo'), (req, res, next) => {
+  console.log('file upload');
+  if (!req.file) {
+    next(new Error('No file uploaded!'));
+  };
+  const imageUrl = req.file.secure_url;
+  res.json(imageUrl).status(200);
+});
+
+router.post('/gallery', parser.array('photo', 8), (req, res, next) => {
+  console.log('gallery upload');
+  if (!req.file) {
+    next(new Error('No file uploaded!'));
+  };
+  console.log(req.file);
+  const galleryUrl = req.file.secure_url;
+  res.json(galleryUrl).status(200);
 });
 
 module.exports = router;
